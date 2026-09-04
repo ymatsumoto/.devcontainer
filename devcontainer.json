@@ -34,7 +34,7 @@
   "postCreateCommand": {
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
     "antigravity-install": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
-    "codex-install": "mkdir -p ~/.local/bin && curl -fsSL -o /tmp/codex.tar.gz https://github.com/openai/codex/releases/latest/download/codex-$(uname -m)-unknown-linux-musl.tar.gz && tar xzf /tmp/codex.tar.gz --no-same-owner -C ~/.local/bin && mv ~/.local/bin/codex-$(uname -m)-unknown-linux-musl ~/.local/bin/codex && chmod +x ~/.local/bin/codex && rm -f /tmp/codex.tar.gz",
+    "codex-install": "mkdir -p ~/.local/bin && curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 PATH=\"$HOME/.local/bin:$PATH\" sh",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
     "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
     "profile": "touch ~/.profile"

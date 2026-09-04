@@ -27,7 +27,7 @@ bind mount したコンテナを起動する。
 |-----|--------|
 | `claude` | `https://claude.ai/install.sh` |
 | `antigravity` | `https://antigravity.google/cli/install.sh` |
-| `codex` | GitHub Releases の `codex-$(uname -m)-unknown-linux-musl.tar.gz`（openai/codex の latest） |
+| `codex` | `https://chatgpt.com/codex/install.sh` |
 
 `gh` と `git` はイメージ側（`Dockerfile`）に入っているのでここには含まれない。
 
@@ -35,8 +35,17 @@ bind mount したコンテナを起動する。
 > したがって互いの生成物に依存できない（例: `codex-install` は `claude-install` が
 > `~/.local/bin` を作るのを当てにせず、自分で `mkdir -p` する）。
 
-> **注記:** codex のバイナリは展開後 258 MB ある。`/root/.local` は名前付きボリュームでは
-> ないため、コンテナを作り直すたびに再ダウンロードが発生する。
+> **注記:** codex の公式インストーラは既定で対話的に質問し、さらに `~/.bashrc` へ
+> `# >>> Codex installer >>>` ブロックを追記しようとする。この devcontainer では `~/.bashrc` が
+> **このリポジトリ内のファイルへのシンボリックリンク**なので、そのままだとコンテナを作るたびに
+> リポジトリが汚れる。`CODEX_NON_INTERACTIVE=1` で対話を止め、`PATH` に `~/.local/bin` を
+> 入れた状態で起動することで PATH 追記処理自体を回避している
+> （インストーラは `$BIN_DIR` が既に `PATH` にあればプロファイルに触らずに抜ける）。
+
+> **注記:** codex の実体は `~/.codex/packages/standalone/releases/<version>/` に置かれ
+> （`codex` 258 MB + `codex-code-mode-host` 69 MB で計 320 MB）、`~/.local/bin/codex` は
+> そこへの symlink になる。`~/.codex` は名前付きボリュームではないため、コンテナを
+> 作り直すたびに再ダウンロードが発生する。
 
 ## 使い方
 
