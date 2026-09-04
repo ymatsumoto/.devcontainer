@@ -15,8 +15,6 @@
 
   "runArgs": [
     "--privileged",
-    "--dns=172.16.0.1",
-    "--dns=172.16.2.3",
     "--dns-search=gie.internal"
   ],
 
@@ -27,8 +25,6 @@
 
   "postCreateCommand": {
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
-    "antigravity-install": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
-    "codex-install": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
     "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
     "profile": "touch ~/.profile"
