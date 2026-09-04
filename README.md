@@ -10,7 +10,7 @@ bind mount したコンテナを起動する。
 | ファイル | 役割 |
 |---------|------|
 | `devcontainer.json` | コンテナ定義。mount / DNS / postCreateCommand / VS Code 拡張 |
-| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, podman, python3, poppler-utils, jq を導入 |
+| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
 | `storage.conf` | podman-in-podman 用のストレージ設定（fuse-overlayfs） |
 | `.bashrc` | 対話シェル設定。tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
