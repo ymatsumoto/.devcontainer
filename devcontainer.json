@@ -13,13 +13,6 @@
      "source=claude-code-history,target=/root/.claude,type=volume"
   ],
 
-  // podman-in-podman: privileged exposes the host /dev (incl. /dev/fuse for
-  // fuse-overlayfs). If the host lacks /dev/fuse, switch storage.conf to "vfs".
-  //
-  // DNS: point straight at the gie DNS (router 172.16.0.1 -> Unbound 172.16.2.3)
-  // instead of the podman/WSL resolver proxy. The proxy silently drops
-  // single-label queries, which made every short name cost 20s before falling
-  // back to the search-domain answer.
   "runArgs": [
     "--privileged",
     "--dns=172.16.0.1",
@@ -28,13 +21,14 @@
   ],
 
   "containerEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "CODEX_NON_INTERACTIVE": "1"
   },
 
   "postCreateCommand": {
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
     "antigravity-install": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
-    "codex-install": "mkdir -p ~/.local/bin && curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 PATH=\"$HOME/.local/bin:$PATH\" sh",
+    "codex-install": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
     "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
     "profile": "touch ~/.profile"
@@ -46,7 +40,6 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
-        "anthropic.claude-code"
       ]
     }
   }

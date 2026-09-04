@@ -58,6 +58,3 @@ alias gl='git log --oneline --graph --decorate -20'
 export PAGER=less
 export LESS='-R -F -X'        # 色を通す / 1画面なら自動終了 / 画面クリアしない
 
-
-# Added by Antigravity CLI installer
-export PATH="/root/.local/bin:$PATH"

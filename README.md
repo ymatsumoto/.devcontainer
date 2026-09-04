@@ -20,7 +20,7 @@ bind mount したコンテナを起動する。
 
 ## コンテナ生成時に導入される CLI
 
-`postCreateCommand` が以下を `~/.local/bin` に入れる（`.bashrc` が PATH に通す）。
+`postCreateCommand` が以下を `~/.local/bin` に入れる（PATH は `Dockerfile` の `ENV` が通す）。
 イメージではなくコンテナ生成時に取得するため、作り直すたびに最新版になる。
 
 | CLI | 取得元 |
@@ -32,15 +32,20 @@ bind mount したコンテナを起動する。
 `gh` と `git` はイメージ側（`Dockerfile`）に入っているのでここには含まれない。
 
 > **注記:** `postCreateCommand` をオブジェクト形式で書くと各コマンドは**並列**に実行される。
-> したがって互いの生成物に依存できない（例: `codex-install` は `claude-install` が
-> `~/.local/bin` を作るのを当てにせず、自分で `mkdir -p` する）。
+> したがって互いの生成物に依存できない。`~/.local/bin` は各インストーラが自分で作る。
 
-> **注記:** codex の公式インストーラは既定で対話的に質問し、さらに `~/.bashrc` へ
+> **警告:** codex の公式インストーラは既定で対話的に質問し、さらに `~/.bashrc` へ
 > `# >>> Codex installer >>>` ブロックを追記しようとする。この devcontainer では `~/.bashrc` が
 > **このリポジトリ内のファイルへのシンボリックリンク**なので、そのままだとコンテナを作るたびに
-> リポジトリが汚れる。`CODEX_NON_INTERACTIVE=1` で対話を止め、`PATH` に `~/.local/bin` を
-> 入れた状態で起動することで PATH 追記処理自体を回避している
-> （インストーラは `$BIN_DIR` が既に `PATH` にあればプロファイルに触らずに抜ける）。
+> リポジトリが汚れる（`.bashrc` に残っていた `# Added by Antigravity CLI installer` の行が
+> まさにこの経路で混入したもの）。対策は2つとも `postCreateCommand` の外に置いてある:
+>
+> - `containerEnv` の `CODEX_NON_INTERACTIVE=1` が対話を止める
+> - `Dockerfile` の `ENV PATH` が `~/.local/bin` を通すので、インストーラの `add_to_path()` が
+>   早期 return してプロファイルに一切触れない
+>
+> したがって **`ENV PATH` を消したり `Dockerfile` を反映せずに古いイメージのまま使うと、
+> `.bashrc` が書き換えられる**。
 
 > **注記:** codex の実体は `~/.codex/packages/standalone/releases/<version>/` に置かれ
 > （`codex` 258 MB + `codex-code-mode-host` 69 MB で計 320 MB）、`~/.local/bin/codex` は
