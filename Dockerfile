@@ -1,8 +1,14 @@
 FROM docker.io/almalinux/9-minimal:latest
 
+# GitHub CLI は AlmaLinux の標準リポジトリに無いので、公式 RPM リポジトリを追加する。
+# 鍵を先に import しておかないと gpgcheck=1 のトランザクションが失敗する。
+RUN curl -fsSL -o /etc/yum.repos.d/gh-cli.repo https://cli.github.com/packages/rpm/gh-cli.repo \
+    && rpm --import https://cli.github.com/packages/githubcli-archive-keyring.asc
+
 RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 \
         tmux \
         git \
+        gh \
         tar \
         gzip \
         podman \
