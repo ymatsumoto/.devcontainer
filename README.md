@@ -18,6 +18,26 @@ bind mount したコンテナを起動する。
 `.bashrc` と `.tmux.conf` は `postCreateCommand` で `~/` にシンボリックリンクされるため、
 編集はこのリポジトリ側で行えばコンテナに即反映される。
 
+## コンテナ生成時に導入される CLI
+
+`postCreateCommand` が以下を `~/.local/bin` に入れる（`.bashrc` が PATH に通す）。
+イメージではなくコンテナ生成時に取得するため、作り直すたびに最新版になる。
+
+| CLI | 取得元 |
+|-----|--------|
+| `claude` | `https://claude.ai/install.sh` |
+| `antigravity` | `https://antigravity.google/cli/install.sh` |
+| `codex` | GitHub Releases の `codex-$(uname -m)-unknown-linux-musl.tar.gz`（openai/codex の latest） |
+
+`gh` と `git` はイメージ側（`Dockerfile`）に入っているのでここには含まれない。
+
+> **注記:** `postCreateCommand` をオブジェクト形式で書くと各コマンドは**並列**に実行される。
+> したがって互いの生成物に依存できない（例: `codex-install` は `claude-install` が
+> `~/.local/bin` を作るのを当てにせず、自分で `mkdir -p` する）。
+
+> **注記:** codex のバイナリは展開後 258 MB ある。`/root/.local` は名前付きボリュームでは
+> ないため、コンテナを作り直すたびに再ダウンロードが発生する。
+
 ## 使い方
 
 このリポジトリをワークスペース root の `.devcontainer/` として配置し、
