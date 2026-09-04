@@ -1,0 +1,52 @@
+{
+  "name": "Claude Code (RHEL-based)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "shutdownAction": "none",
+
+  "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
+  "workspaceFolder": "/root/work",
+
+  "mounts": [
+     "source=claude-code-history,target=/root/.claude,type=volume"
+  ],
+
+  // podman-in-podman: privileged exposes the host /dev (incl. /dev/fuse for
+  // fuse-overlayfs). If the host lacks /dev/fuse, switch storage.conf to "vfs".
+  //
+  // DNS: point straight at the gie DNS (router 172.16.0.1 -> Unbound 172.16.2.3)
+  // instead of the podman/WSL resolver proxy. The proxy silently drops
+  // single-label queries, which made every short name cost 20s before falling
+  // back to the search-domain answer.
+  "runArgs": [
+    "--privileged",
+    "--dns=172.16.0.1",
+    "--dns=172.16.2.3",
+    "--dns-search=gie.internal"
+  ],
+
+  "containerEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
+
+  "postCreateCommand": {
+    "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
+    "antigravity-install": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
+    "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
+    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
+    "profile": "touch ~/.profile"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  }
+}
