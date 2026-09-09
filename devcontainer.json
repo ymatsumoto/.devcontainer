@@ -9,10 +9,6 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  // Keep the Claude Code home on the shared workspace, not in a host-local
-  // named volume, so the history follows the repo when it is opened as a
-  // container on another host. initializeCommand runs on the host before the
-  // container is created, so the bind source always exists.
   "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude",
 
   "mounts": [
@@ -25,23 +21,20 @@
   ],
 
   "containerEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "HISTFILE": "/root/work/.container-home/bash_history"
   },
 
   "postCreateCommand": {
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
-    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
-    "profile": "touch ~/.profile"
+    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf"
   },
 
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
-      },
-      "extensions": [
-      ]
+      }
     }
   }
 }
