@@ -1,0 +1,4 @@
+# ローカル専用: 未公開の .vsix とそのインストーラは各ホストの手元に置くだけで、
+# リポジトリでは管理しない (バイナリを履歴に載せないため)。
+extensions/
+install-local-extensions.sh

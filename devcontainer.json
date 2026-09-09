@@ -9,8 +9,14 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
+  // Keep the Claude Code home on the shared workspace, not in a host-local
+  // named volume, so the history follows the repo when it is opened as a
+  // container on another host. initializeCommand runs on the host before the
+  // container is created, so the bind source always exists.
+  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude",
+
   "mounts": [
-     "source=claude-code-history,target=/root/.claude,type=volume"
+     "source=${localWorkspaceFolder}/.container-home/claude,target=/root/.claude,type=bind"
   ],
 
   "runArgs": [
@@ -19,8 +25,7 @@
   ],
 
   "containerEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
-    "CODEX_NON_INTERACTIVE": "1"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
   },
 
   "postCreateCommand": {
