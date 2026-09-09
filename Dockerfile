@@ -20,15 +20,5 @@ RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 \
     && microdnf clean all \
     && rm -rf /var/cache/dnf /var/cache/yum
 
-# postCreateCommand が入れる CLI (claude / antigravity / codex) の置き場所を PATH に通す。
-# .bashrc ではなくイメージ側で設定する理由: .bashrc は非対話シェルで早期 return するうえ、
-# postCreateCommand はそもそも .bashrc を読まないシェルで実行されるため、
-# ライフサイクルスクリプトからは見えない。devcontainer.json の containerEnv も使えない
-# (既存 PATH を参照する ${containerEnv:PATH} は remoteEnv でのみ有効)。
-#
-# これは codex の公式インストーラにも効く。BIN_DIR が既に PATH にあると
-# add_to_path() が即 return し、~/.bashrc への PATH ブロック追記を行わない。
-ENV PATH="/root/.local/bin:${PATH}"
-
 # podman-in-podman: use fuse-overlayfs (falls back to vfs if unavailable)
 COPY storage.conf /etc/containers/storage.conf
