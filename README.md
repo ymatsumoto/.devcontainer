@@ -9,14 +9,16 @@ bind mount したコンテナを起動する。
 
 | ファイル | 役割 |
 |---------|------|
-| `devcontainer.json` | コンテナ定義。mount / DNS / postCreateCommand |
+| `devcontainer.json` | コンテナ定義。mount / DNS / initializeCommand / postCreateCommand |
 | `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
 | `storage.conf` | podman-in-podman 用のストレージ設定（fuse-overlayfs） |
 | `.bashrc` | 対話シェル設定。tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
 `.bashrc` と `.tmux.conf` は `postCreateCommand` で `~/` にシンボリックリンクされるため、
-編集はこのリポジトリ側で行えばコンテナに即反映される。
+編集はこのリポジトリ側で行えばコンテナに即反映される。`~/.gitconfig` と `~/.config/gh` も同じく
+symlink だが、リンク先はこのリポジトリではなく `.container-home/` 側になる（リポジトリの成果物
+ではなく、ツールが接続のたびに書き換える実行環境の状態であるため。後述）。
 
 ## コンテナ生成時に導入される CLI
 
@@ -48,20 +50,53 @@ bind mount したコンテナを起動する。
 | コンテナ内 | 実体 | 設定箇所 |
 |---|---|---|
 | `/root/.claude` | `<workspace>/.container-home/claude` | `mounts` の bind mount |
+| `/root/.claude.json` | `<workspace>/.claude.json` | `mounts` の bind mount |
+| `~/.gitconfig` | `<workspace>/.container-home/gitconfig` | `postCreateCommand` の symlink |
+| `~/.config/gh` | `<workspace>/.container-home/gh` | `postCreateCommand` の symlink |
 | `$HISTFILE` | `<workspace>/.container-home/bash_history` | `containerEnv` |
+
+Claude Code の状態は `~/.claude/`（履歴・セッション）と `~/.claude.json`（信頼済みディレクトリ、
+オンボーディング状態、MCP の承認など）に分かれているので、両方を持ち越さないと片方だけ
+リセットされる。
 
 `workspaceFolder` を `/root/work` に固定しているのが前提になっている。Claude Code の会話履歴は
 cwd 由来のスラグ（`projects/-root-work/`）で引かれるので、コンテナ内パスが同じでないと
 別ホストで履歴が繋がらない。
 
-bind mount の source が存在しないとコンテナ作成に失敗するので、ホスト側でコンテナ作成前に
-走る `initializeCommand` で `mkdir -p` している。
+bind と symlink の使い分けは、実体を用意できるタイミングで決まる。bind は source がコンテナ
+作成前に存在していなければならないため、ホスト側で走る `initializeCommand` で用意する。symlink は
+コンテナ内の `postCreateCommand` で張るので、リンク先を自分で `mkdir` できる。
+
+> **警告:** bind mount の source が存在しない場合、podman はエラーにせず**それをディレクトリとして
+> 作る**。`/root/.claude.json` がディレクトリになると Claude Code は設定を読めない。
+> `initializeCommand` が空ファイルではなく `{}` を書いているのはこのためで、パース対象として
+> 妥当な JSON にしておく必要がある。
 
 > **警告:** 同一のワークスペースを**2 ホストから同時にコンテナとして開かない**こと。
 > `history.jsonl` や `bash_history` への追記が調停されない。Claude Code のセッション本体は
 > UUID 別ファイルなので衝突はしないが、取りこぼしが起きる。
 > `shutdownAction: "none"` で VS Code を閉じてもコンテナが生き続けるため、意図せず
 > 2 ホストで生存しやすい点に注意（下記「コンテナを明示的に落とす」参照）。
+
+### `~/.gitconfig` と gh の認証
+
+`~/.gitconfig` をリポジトリ側ではなく `.container-home/` に置いているのは、このファイルを
+VS Code が接続のたびに書き換えるため。Dev Containers 拡張は credential helper を
+`git config --global` で書き込むが、git の lockfile は書き込み前に symlink を解決するので、
+リンク自体は実ファイルで置き換えられず実体だけが更新される。結果として helper のパスは
+接続のたびに自動で最新化される。
+
+> **注記:** 裏を返すと、別ホストで書かれた helper のパスが残っている状態が起こりうる。存在しない
+> `vscode-server` のビルドを指していると git が毎回 `No such file or directory` を吐く。そのホストで
+> VS Code が接続すれば上書きされて直るが、`gh` 用の helper のパスは自動では直らない。
+
+gh の認証情報は `~/.config/gh/hosts.yml` に**平文**で入る。そのため `.container-home/` 以下は
+`700` で締めている（`chmod -R go-rwx`。ファイルに実行ビットを立てないための `go-rwx`）。
+
+あわせてトークン側もスコープと期限で絞っておきたい。ブラウザ／デバイスフローで得られる
+OAuth トークンは `repo`, `gist`, `read:org`, `workflow` を持つ広いものなので、必要なリポジトリ
+だけに限定した fine-grained PAT を `gh auth login --with-token` で入れる方が、漏れたときの被害が
+小さい。
 
 ## 使い方
 
@@ -71,7 +106,8 @@ VS Code で「Reopen in Container」を実行する。
 ```
 <workspace>/
 ├── .devcontainer/     ← このリポジトリ
-├── .container-home/   ← コンテナ内のホーム相当（git 管理外）
+├── .container-home/   ← コンテナ内のホーム相当（git 管理外・700）
+├── .claude.json       ← Claude Code の設定本体（git 管理外・600）
 └── <各プロジェクト>/
 ```
 
@@ -103,5 +139,8 @@ VS Code で「Reopen in Container」を実行する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
   `workspaceFolder` を変える場合は両方を合わせて変更する。
-- **認証情報**: Claude Code の認証は `/root/.claude/.credentials.json`（OAuth）で行い、
-  API キーは `containerEnv` で渡していない。共有ストレージ上に置かれる点に注意。
+- **認証情報**: Claude Code の認証は `/root/.claude/.credentials.json`（OAuth）、gh の認証は
+  `~/.config/gh/hosts.yml` で行い、どちらもキーやトークンを `containerEnv` では渡していない。
+  いずれも平文で共有ストレージ上に置かれる点に注意（前述のとおり `.container-home/` は `700`）。
+  共有ストレージに載せたくない場合は、`containerEnv` に `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を
+  置いてホストの環境変数から渡す方式に切り替える。
