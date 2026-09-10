@@ -42,13 +42,14 @@ symlink だが、リンク先は `.container-home/` 側。
 | コンテナ内 | 実体 | 設定箇所 |
 |---|---|---|
 | `/root/.claude` | `<workspace>/.container-home/claude` | `mounts` の bind mount |
-| `/root/.claude.json` | `<workspace>/.claude.json` | `mounts` の bind mount |
+| `/root/.claude.json` | `<workspace>/.container-home/claude.json` | `mounts` の bind mount |
 | `~/.gitconfig` | `<workspace>/.container-home/gitconfig` | `postCreateCommand` の symlink |
 | `~/.config/gh` | `<workspace>/.container-home/gh` | `postCreateCommand` の symlink |
 | `$HISTFILE` | `<workspace>/.container-home/bash_history` | `containerEnv` |
 
-Claude Code の状態は `~/.claude/`（履歴・セッション）と `~/.claude.json`（信頼済みディレクトリ、
-MCP の承認など）に分かれているので、両方が要る。
+Claude Code の状態は `~/.claude/`（履歴・セッション・`settings.json`）と `~/.claude.json`
+（信頼済みディレクトリ、アカウント情報などの内部状態）に分かれているので、両方が要る。
+`~/.claude.json` の位置は `$HOME` 直下で固定なので、bind のターゲットは変えられない。
 
 `workspaceFolder` は `/root/work` に固定すること。会話履歴は cwd 由来のスラグ
 （`projects/-root-work/`）で引かれるので、コンテナ内パスが変わると別ホストで履歴が繋がらない。
@@ -81,7 +82,6 @@ VS Code で「Reopen in Container」を実行する。
 <workspace>/
 ├── .devcontainer/     ← このリポジトリ
 ├── .container-home/   ← コンテナ内のホーム相当（git 管理外・700）
-├── .claude.json       ← Claude Code の設定本体（git 管理外・600）
 └── <各プロジェクト>/
 ```
 

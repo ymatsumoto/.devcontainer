@@ -9,11 +9,11 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude; [ -e ${localWorkspaceFolder}/.claude.json ] || echo '{}' > ${localWorkspaceFolder}/.claude.json",
+  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude; [ -e ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
 
   "mounts": [
      "source=${localWorkspaceFolder}/.container-home/claude,target=/root/.claude,type=bind",
-     "source=${localWorkspaceFolder}/.claude.json,target=/root/.claude.json,type=bind"
+     "source=${localWorkspaceFolder}/.container-home/claude.json,target=/root/.claude.json,type=bind"
   ],
 
   "runArgs": [
