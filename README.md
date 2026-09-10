@@ -16,9 +16,8 @@ bind mount したコンテナを起動する。
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
 `.bashrc` と `.tmux.conf` は `postCreateCommand` で `~/` にシンボリックリンクされるため、
-編集はこのリポジトリ側で行えばコンテナに即反映される。`~/.gitconfig` と `~/.config/gh` も同じく
-symlink だが、リンク先はこのリポジトリではなく `.container-home/` 側になる（リポジトリの成果物
-ではなく、ツールが接続のたびに書き換える実行環境の状態であるため。後述）。
+編集はこのリポジトリ側で行えばコンテナに即反映される。`~/.gitconfig` と `~/.config/gh` も
+symlink だが、リンク先は `.container-home/` 側。
 
 ## コンテナ生成時に導入される CLI
 
@@ -26,20 +25,13 @@ symlink だが、リンク先はこのリポジトリではなく `.container-ho
 入れる（PATH は `Dockerfile` の `ENV` が通す）。イメージではなくコンテナ生成時に取得する
 ため、作り直すたびに最新版になる。`gh` と `git` はイメージ側（`Dockerfile`）に入っている。
 
-> **注記:** `postCreateCommand` をオブジェクト形式で書くと各コマンドは**並列**に実行される。
-> したがって互いの生成物に依存できない。`~/.local/bin` はインストーラが自分で作る。
+`postCreateCommand` をオブジェクト形式で書くと各コマンドは**並列**に実行されるため、互いの
+生成物には依存できない。
 
-> **警告:** `Dockerfile` の `ENV PATH` は単なる利便性ではなく、`~/.bashrc` を保護している。
-> claude の公式インストーラは `BIN_DIR` が PATH に無いと `~/.bashrc` へ PATH ブロックを
-> 追記するが、この devcontainer では `~/.bashrc` が**このリポジトリ内のファイルへの
-> シンボリックリンク**なので、そのままだとコンテナを作るたびにリポジトリが汚れる
-> （`.bashrc` に残っていた `# Added by Antigravity CLI installer` の行がまさにこの経路で
-> 混入したもの）。`ENV PATH` が `~/.local/bin` を先に通しておくことで、インストーラの
-> `add_to_path()` が早期 return してプロファイルに一切触れない。しかも
-> `postCreateCommand` は並列実行なので、symlink 作成とインストーラが競合しうる。
->
-> したがって **`ENV PATH` を消したり `Dockerfile` を反映せずに古いイメージのまま使うと、
-> `.bashrc` が書き換えられる**。
+> **警告:** `Dockerfile` の `ENV PATH` から `~/.local/bin` を外すと、claude のインストーラが
+> `~/.bashrc` に PATH ブロックを追記する。`~/.bashrc` はこのリポジトリ内のファイルへの symlink
+> なので、コンテナを作るたびにリポジトリが汚れる。`Dockerfile` を反映せず古いイメージのまま
+> 使った場合も同じ。
 
 ## ホストをまたいで持ち越される状態
 
@@ -56,47 +48,29 @@ symlink だが、リンク先はこのリポジトリではなく `.container-ho
 | `$HISTFILE` | `<workspace>/.container-home/bash_history` | `containerEnv` |
 
 Claude Code の状態は `~/.claude/`（履歴・セッション）と `~/.claude.json`（信頼済みディレクトリ、
-オンボーディング状態、MCP の承認など）に分かれているので、両方を持ち越さないと片方だけ
-リセットされる。
+MCP の承認など）に分かれているので、両方が要る。
 
-`workspaceFolder` を `/root/work` に固定しているのが前提になっている。Claude Code の会話履歴は
-cwd 由来のスラグ（`projects/-root-work/`）で引かれるので、コンテナ内パスが同じでないと
-別ホストで履歴が繋がらない。
+`workspaceFolder` は `/root/work` に固定すること。会話履歴は cwd 由来のスラグ
+（`projects/-root-work/`）で引かれるので、コンテナ内パスが変わると別ホストで履歴が繋がらない。
 
-bind と symlink の使い分けは、実体を用意できるタイミングで決まる。bind は source がコンテナ
-作成前に存在していなければならないため、ホスト側で走る `initializeCommand` で用意する。symlink は
-コンテナ内の `postCreateCommand` で張るので、リンク先を自分で `mkdir` できる。
+> **警告:** bind mount の source を消すと、podman がそれをディレクトリとして作り直し、
+> Claude Code が設定を読めなくなる。`initializeCommand` が `.container-home/claude` と
+> `.claude.json`（中身は `{}`）を先に用意しているのはこのため。
 
-> **警告:** bind mount の source が存在しない場合、podman はエラーにせず**それをディレクトリとして
-> 作る**。`/root/.claude.json` がディレクトリになると Claude Code は設定を読めない。
-> `initializeCommand` が空ファイルではなく `{}` を書いているのはこのためで、パース対象として
-> 妥当な JSON にしておく必要がある。
+> **警告:** 同一のワークスペースを 2 ホストから同時に開くと、`history.jsonl` と `bash_history`
+> への追記が調停されず取りこぼしが起きる。`shutdownAction: "none"` でコンテナが生き続けるため、
+> 意図せず 2 ホストで生存しやすい（下記「コンテナを明示的に落とす」参照）。
 
-> **警告:** 同一のワークスペースを**2 ホストから同時にコンテナとして開かない**こと。
-> `history.jsonl` や `bash_history` への追記が調停されない。Claude Code のセッション本体は
-> UUID 別ファイルなので衝突はしないが、取りこぼしが起きる。
-> `shutdownAction: "none"` で VS Code を閉じてもコンテナが生き続けるため、意図せず
-> 2 ホストで生存しやすい点に注意（下記「コンテナを明示的に落とす」参照）。
+### 認証情報
 
-### `~/.gitconfig` と gh の認証
+`~/.gitconfig` の credential helper は VS Code が接続のたびに書き換える。別ホストで書かれた
+パスが残っている間は git が `No such file or directory` を吐くが、そのホストで VS Code が
+接続すれば直る。`gh` 用の helper のパスは自動では直らないので、その場合は手で直す。
 
-`~/.gitconfig` をリポジトリ側ではなく `.container-home/` に置いているのは、このファイルを
-VS Code が接続のたびに書き換えるため。Dev Containers 拡張は credential helper を
-`git config --global` で書き込むが、git の lockfile は書き込み前に symlink を解決するので、
-リンク自体は実ファイルで置き換えられず実体だけが更新される。結果として helper のパスは
-接続のたびに自動で最新化される。
-
-> **注記:** 裏を返すと、別ホストで書かれた helper のパスが残っている状態が起こりうる。存在しない
-> `vscode-server` のビルドを指していると git が毎回 `No such file or directory` を吐く。そのホストで
-> VS Code が接続すれば上書きされて直るが、`gh` 用の helper のパスは自動では直らない。
-
-gh の認証情報は `~/.config/gh/hosts.yml` に**平文**で入る。そのため `.container-home/` 以下は
-`700` で締めている（`chmod -R go-rwx`。ファイルに実行ビットを立てないための `go-rwx`）。
-
-あわせてトークン側もスコープと期限で絞っておきたい。ブラウザ／デバイスフローで得られる
-OAuth トークンは `repo`, `gist`, `read:org`, `workflow` を持つ広いものなので、必要なリポジトリ
-だけに限定した fine-grained PAT を `gh auth login --with-token` で入れる方が、漏れたときの被害が
-小さい。
+gh のトークンは `~/.config/gh/hosts.yml` に平文で入るため、`.container-home/` 以下は `700`
+（`chmod -R go-rwx`）にしている。ブラウザ／デバイスフローの OAuth トークンは
+`repo`, `gist`, `read:org`, `workflow` を持つ広いものなので、リポジトリを限定した
+fine-grained PAT を `gh auth login --with-token` で入れる方が安全。
 
 ## 使い方
 
@@ -114,8 +88,8 @@ VS Code で「Reopen in Container」を実行する。
 ## コンテナを明示的に落とす
 
 `shutdownAction: "none"` は意図的な設定で、VS Code のウィンドウを閉じてもコンテナを
-落とさない（tmux セッションと実行中のジョブを残すため）。裏を返すと VS Code 側の操作では
-止まらないので、明示的に落とすには次のどちらかを使う。
+落とさない（tmux セッションと実行中のジョブを残すため）。VS Code 側の操作では止まらないので、
+明示的に落とすには次のどちらかを使う。
 
 - **VS Code**: Remote Explorer（リモートエクスプローラー）の Dev Containers 一覧で
   対象コンテナを右クリック →「Stop Container」。
@@ -139,8 +113,6 @@ VS Code で「Reopen in Container」を実行する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
   `workspaceFolder` を変える場合は両方を合わせて変更する。
-- **認証情報**: Claude Code の認証は `/root/.claude/.credentials.json`（OAuth）、gh の認証は
-  `~/.config/gh/hosts.yml` で行い、どちらもキーやトークンを `containerEnv` では渡していない。
-  いずれも平文で共有ストレージ上に置かれる点に注意（前述のとおり `.container-home/` は `700`）。
-  共有ストレージに載せたくない場合は、`containerEnv` に `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を
-  置いてホストの環境変数から渡す方式に切り替える。
+- **認証情報**: Claude Code も gh も共有ストレージ上のファイルで認証する（上記「認証情報」参照）。
+  トークンを共有ストレージに置きたくない場合は、`containerEnv` に
+  `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を置いてホストの環境変数から渡す方式に切り替える。
