@@ -20,9 +20,6 @@ HISTCONTROL=ignoreboth        # 重複と先頭スペース付きを記録しな
 shopt -s histappend           # 履歴を上書きせず追記
 PROMPT_COMMAND='history -a'   # コマンドごとに履歴を書き出す（複数端末で共有）
 
-# --- タイムゾーン --------------------------------------------------------------------
-export TZ="Asia/Tokyo"
-
 # --- シェル挙動 --------------------------------------------------------------
 shopt -s checkwinsize         # ウィンドウサイズ変更に追従
 shopt -s globstar 2>/dev/null # ** で再帰グロブ

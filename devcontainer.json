@@ -22,7 +22,8 @@
   ],
 
   "containerEnv": {
-    "HISTFILE": "/root/work/.container-home/bash_history"
+    "HISTFILE": "/root/work/.container-home/bash_history",
+    "TZ": "Asia/Tokyo"
   },
 
   "postCreateCommand": {
