@@ -107,8 +107,8 @@ VS Code で「Reopen in Container」を実行する。
 
 ## 環境依存の設定（fork 時は要変更）
 
-- **DNS**: `runArgs` の `--dns-search=gie.internal` は特定ネットワーク向けの設定。
-  別環境では削除するか自分の検索ドメインに置き換える。
+- **DNS**: search domain はホストの `/etc/resolv.conf` から継承する。`--dns-search` は継承した
+  search を**置き換える**ので、環境をまたいで使うなら指定しない。
 - **`--privileged`**: podman-in-podman のためにホストの `/dev`（`/dev/fuse` を含む）を露出する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。

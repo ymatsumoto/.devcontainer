@@ -17,8 +17,7 @@
   ],
 
   "runArgs": [
-    "--privileged",
-    "--dns-search=gie.internal"
+    "--privileged"
   ],
 
   "containerEnv": {
