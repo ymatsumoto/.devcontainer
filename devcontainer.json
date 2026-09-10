@@ -28,7 +28,8 @@
   "postCreateCommand": {
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
-    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf"
+    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
+    "gitconfig": "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig"
   },
 
   "customizations": {
