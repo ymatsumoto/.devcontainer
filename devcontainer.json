@@ -29,7 +29,8 @@
     "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
     "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
-    "gitconfig": "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig"
+    "gitconfig": "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig",
+    "gh-config": "mkdir -p ~/.config ${containerWorkspaceFolder}/.container-home/gh && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh"
   },
 
   "customizations": {
