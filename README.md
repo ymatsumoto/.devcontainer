@@ -113,6 +113,8 @@ VS Code で「Reopen in Container」を実行する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
   `workspaceFolder` を変える場合は両方を合わせて変更する。
+- **`TZ`**: `containerEnv` で `Asia/Tokyo` を指定している。`.bashrc` ではなく `containerEnv` に
+  置くのは、`.bashrc` の `export` が tmux サーバに届かずステータス行の時計が UTC になるため。
 - **認証情報**: Claude Code も gh も共有ストレージ上のファイルで認証する（上記「認証情報」参照）。
   トークンを共有ストレージに置きたくない場合は、`containerEnv` に
   `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を置いてホストの環境変数から渡す方式に切り替える。
