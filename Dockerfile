@@ -19,7 +19,3 @@ RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 \
     && rm -rf /var/cache/dnf /var/cache/yum
 
 ENV PATH="/root/.local/bin:${PATH}"
-
-# storage.conf は devcontainer.json の mounts でバインドする。
-# ビルド時には使わない（podman が実行時に読むだけ）ので COPY をやめ、
-# 再ビルドせずに driver=vfs へ切り替えられるようにした。

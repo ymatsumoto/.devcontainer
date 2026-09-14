@@ -9,7 +9,14 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude ${localWorkspaceFolder}/.container-home/ssh; chmod 700 ${localWorkspaceFolder}/.container-home/ssh; [ -e ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
+  "initializeCommand": {
+    "claude":       "mkdir -p ${localWorkspaceFolder}/.container-home/claude",
+    "claude-json":  "mkdir -p ${localWorkspaceFolder}/.container-home; [ -s ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
+    "ssh":          "mkdir -p ${localWorkspaceFolder}/.container-home/ssh && chmod 700 ${localWorkspaceFolder}/.container-home/ssh",
+    "gh":           "mkdir -p ${localWorkspaceFolder}/.container-home/gh && chmod 700 ${localWorkspaceFolder}/.container-home/gh",
+    "gitconfig":    "mkdir -p ${localWorkspaceFolder}/.container-home && touch ${localWorkspaceFolder}/.container-home/gitconfig",
+    "bash-history": "mkdir -p ${localWorkspaceFolder}/.container-home && touch ${localWorkspaceFolder}/.container-home/bash_history"
+  },
 
   "mounts": [
      "source=${localWorkspaceFolder}/.container-home/claude,target=/root/.claude,type=bind",
@@ -23,17 +30,17 @@
   ],
 
   "containerEnv": {
-    "HISTFILE": "/root/work/.container-home/bash_history",
+    "HISTFILE": "${containerWorkspaceFolder}/.container-home/bash_history",
     "TZ": "Asia/Tokyo"
   },
 
   "postCreateCommand": {
-    "claude-install": "curl -fsSL https://claude.ai/install.sh | bash",
-    "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
-    "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
-    "gitconfig": "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig",
-    "gh-config": "mkdir -p ~/.config ${containerWorkspaceFolder}/.container-home/gh && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh",
-    "ssh-perms": "chmod 700 ~/.ssh 2>/dev/null; chmod 600 ~/.ssh/* 2>/dev/null; chmod 644 ~/.ssh/*.pub ~/.ssh/known_hosts 2>/dev/null; true"
+    "claude":       "curl -fsSL https://claude.ai/install.sh | bash",
+    "ssh":          "chmod 700 ~/.ssh 2>/dev/null; chmod 600 ~/.ssh/* 2>/dev/null; chmod 644 ~/.ssh/*.pub ~/.ssh/known_hosts 2>/dev/null; true",
+    "gh":           "mkdir -p ~/.config && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh",
+    "gitconfig":    "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig",
+    "bashrc":       "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
+    "tmux-conf":    "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf"
   },
 
   "customizations": {
