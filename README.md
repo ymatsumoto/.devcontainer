@@ -11,7 +11,7 @@ bind mount したコンテナを起動する。
 |---------|------|
 | `devcontainer.json` | コンテナ定義。mount / DNS / initializeCommand / postCreateCommand |
 | `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
-| `storage.conf` | podman-in-podman 用のストレージ設定（fuse-overlayfs） |
+| `storage.conf` | podman-in-podman 用のストレージ設定（fuse-overlayfs）。**`mounts` でバインドする**ので、変更は再ビルド不要（コンテナ再起動のみ） |
 | `.bashrc` | 対話シェル設定。tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
@@ -111,6 +111,7 @@ VS Code で「Reopen in Container」を実行する。
   search を**置き換える**ので、環境をまたいで使うなら指定しない。
 - **`--privileged`**: podman-in-podman のためにホストの `/dev`（`/dev/fuse` を含む）を露出する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
+  bind mount なので**再ビルドは不要**（コンテナを作り直すだけで反映される）。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
   `workspaceFolder` を変える場合は両方を合わせて変更する。
 - **`TZ`**: `containerEnv` で `Asia/Tokyo` を指定している。`.bashrc` ではなく `containerEnv` に
@@ -118,3 +119,23 @@ VS Code で「Reopen in Container」を実行する。
 - **認証情報**: Claude Code も gh も共有ストレージ上のファイルで認証する（上記「認証情報」参照）。
   トークンを共有ストレージに置きたくない場合は、`containerEnv` に
   `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を置いてホストの環境変数から渡す方式に切り替える。
+
+## SSH 鍵と `~/.ssh`
+
+`/root/.ssh` は `<ws>/.container-home/ssh` を **bind mount** している。
+コンテナを作り直しても鍵と `known_hosts` が残る。
+
+```jsonc
+"source=${localWorkspaceFolder}/.container-home/ssh,target=/root/.ssh,type=bind"
+```
+
+- `initializeCommand` がホスト側で `700` で作る（bind の source が無いと podman が
+  ディレクトリとして作ってしまうため、先に作っておく必要がある）
+- `postCreateCommand` の `ssh-perms` が `~/.ssh` 700 / 秘密鍵 600 /
+  `.pub`・`known_hosts` 644 に直す。緩いと ssh が鍵を読まない
+- ⚠ **秘密鍵をこのリポジトリ（`.devcontainer/`）に置かないこと。** GitHub に push される。
+  置き場所は `<ws>/.container-home/ssh` で、ワークスペース側の `.gitignore` で
+  `.container-home/` ごと除外してある
+
+> 以前はワークスペース直下の `.secrets/ssh/` を正本にして起動のたび `~/.ssh` へ
+> コピーしていたが、bind mount にしたので **2026-09-14 に `.secrets/` は廃止した**。
