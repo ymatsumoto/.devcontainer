@@ -1,9 +1,8 @@
 FROM docker.io/almalinux/9-minimal:latest
 
-RUN curl -fsSL -o /etc/yum.repos.d/gh-cli.repo https://cli.github.com/packages/rpm/gh-cli.repo \
-    && rpm --import https://cli.github.com/packages/githubcli-archive-keyring.asc
-
-RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 \
+RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 epel-release \
+    && sed -i '/^\[crb\]/,/^\[/ s/^enabled=0/enabled=1/' /etc/yum.repos.d/almalinux-crb.repo \
+    && microdnf install -y --nodocs --setopt=install_weak_deps=0 \
         tmux \
         git \
         gh \
