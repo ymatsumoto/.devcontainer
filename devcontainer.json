@@ -9,11 +9,13 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude; [ -e ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
+  "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.container-home/claude ${localWorkspaceFolder}/.container-home/ssh; chmod 700 ${localWorkspaceFolder}/.container-home/ssh; [ -e ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
 
   "mounts": [
      "source=${localWorkspaceFolder}/.container-home/claude,target=/root/.claude,type=bind",
-     "source=${localWorkspaceFolder}/.container-home/claude.json,target=/root/.claude.json,type=bind"
+     "source=${localWorkspaceFolder}/.container-home/claude.json,target=/root/.claude.json,type=bind",
+     "source=${localWorkspaceFolder}/.container-home/ssh,target=/root/.ssh,type=bind",
+     "source=${localWorkspaceFolder}/.devcontainer/storage.conf,target=/etc/containers/storage.conf,type=bind"
   ],
 
   "runArgs": [
@@ -30,7 +32,8 @@
     "bashrc": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
     "tmux-conf": "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
     "gitconfig": "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig",
-    "gh-config": "mkdir -p ~/.config ${containerWorkspaceFolder}/.container-home/gh && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh"
+    "gh-config": "mkdir -p ~/.config ${containerWorkspaceFolder}/.container-home/gh && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh",
+    "ssh-perms": "chmod 700 ~/.ssh 2>/dev/null; chmod 600 ~/.ssh/* 2>/dev/null; chmod 644 ~/.ssh/*.pub ~/.ssh/known_hosts 2>/dev/null; true"
   },
 
   "customizations": {
