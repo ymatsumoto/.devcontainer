@@ -1,82 +1,10 @@
 # .devcontainer
 
-Claude Code を動かすための Dev Container 定義（AlmaLinux 9 ベース）。
-
-VS Code の Dev Containers 拡張がこのディレクトリを読み、`/root/work` にワークスペースを
-bind mount したコンテナを起動する。
-
-## 構成
-
-| ファイル | 役割 |
-|---------|------|
-| `devcontainer.json` | コンテナ定義。mount / DNS / initializeCommand / postCreateCommand |
-| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
-| `storage.conf` | podman-in-podman 用のストレージ設定（fuse-overlayfs）。**`mounts` でバインドする**ので、変更は再ビルド不要（コンテナ再起動のみ） |
-| `.bashrc` | 対話シェル設定。tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
-| `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
-
-`.bashrc` と `.tmux.conf` は `postCreateCommand` で `~/` にシンボリックリンクされるため、
-編集はこのリポジトリ側で行えばコンテナに即反映される。`~/.gitconfig` と `~/.config/gh` も
-symlink だが、リンク先は `.container-home/` 側。
-
-## コンテナ生成時に導入される CLI
-
-`postCreateCommand` が `claude` を `https://claude.ai/install.sh` から `~/.local/bin` に
-入れる（PATH は `Dockerfile` の `ENV` が通す）。イメージではなくコンテナ生成時に取得する
-ため、作り直すたびに最新版になる。`gh` と `git` はイメージ側（`Dockerfile`）に入っている。
-
-`postCreateCommand` をオブジェクト形式で書くと各コマンドは**並列**に実行されるため、互いの
-生成物には依存できない。
-
-> **警告:** `Dockerfile` の `ENV PATH` から `~/.local/bin` を外すと、claude のインストーラが
-> `~/.bashrc` に PATH ブロックを追記する。`~/.bashrc` はこのリポジトリ内のファイルへの symlink
-> なので、コンテナを作るたびにリポジトリが汚れる。`Dockerfile` を反映せず古いイメージのまま
-> 使った場合も同じ。
-
-## ホストをまたいで持ち越される状態
-
-ワークスペースが共有ストレージ上にある前提で、コンテナ内のホーム相当のものは
-ワークスペース配下の `.container-home/` に置き、別ホストで開いても引き継がれるようにしている。
-名前付きボリュームは実体がそのホストのローカルディスクに作られるため使わない。
-
-| コンテナ内 | 実体 | 設定箇所 |
-|---|---|---|
-| `/root/.claude` | `<workspace>/.container-home/claude` | `mounts` の bind mount |
-| `/root/.claude.json` | `<workspace>/.container-home/claude.json` | `mounts` の bind mount |
-| `~/.gitconfig` | `<workspace>/.container-home/gitconfig` | `postCreateCommand` の symlink |
-| `~/.config/gh` | `<workspace>/.container-home/gh` | `postCreateCommand` の symlink |
-| `$HISTFILE` | `<workspace>/.container-home/bash_history` | `containerEnv` |
-
-Claude Code の状態は `~/.claude/`（履歴・セッション・`settings.json`）と `~/.claude.json`
-（信頼済みディレクトリ、アカウント情報などの内部状態）に分かれているので、両方が要る。
-`~/.claude.json` の位置は `$HOME` 直下で固定なので、bind のターゲットは変えられない。
-
-`workspaceFolder` は `/root/work` に固定すること。会話履歴は cwd 由来のスラグ
-（`projects/-root-work/`）で引かれるので、コンテナ内パスが変わると別ホストで履歴が繋がらない。
-
-> **警告:** bind mount の source を消すと、podman がそれをディレクトリとして作り直し、
-> Claude Code が設定を読めなくなる。`initializeCommand` が `.container-home/claude` と
-> `.claude.json`（中身は `{}`）を先に用意しているのはこのため。
-
-> **警告:** 同一のワークスペースを 2 ホストから同時に開くと、`history.jsonl` と `bash_history`
-> への追記が調停されず取りこぼしが起きる。`shutdownAction: "none"` でコンテナが生き続けるため、
-> 意図せず 2 ホストで生存しやすい（下記「コンテナを明示的に落とす」参照）。
-
-### 認証情報
-
-`~/.gitconfig` の credential helper は VS Code が接続のたびに書き換える。別ホストで書かれた
-パスが残っている間は git が `No such file or directory` を吐くが、そのホストで VS Code が
-接続すれば直る。`gh` 用の helper のパスは自動では直らないので、その場合は手で直す。
-
-gh のトークンは `~/.config/gh/hosts.yml` に平文で入るため、`.container-home/` 以下は `700`
-（`chmod -R go-rwx`）にしている。ブラウザ／デバイスフローの OAuth トークンは
-`repo`, `gist`, `read:org`, `workflow` を持つ広いものなので、リポジトリを限定した
-fine-grained PAT を `gh auth login --with-token` で入れる方が安全。
+Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）。
 
 ## 使い方
 
-このリポジトリをワークスペース root の `.devcontainer/` として配置し、
-VS Code で「Reopen in Container」を実行する。
+ワークスペース root の `.devcontainer/` として配置し、VS Code で「Reopen in Container」を実行する。
 
 ```
 <workspace>/
@@ -85,66 +13,67 @@ VS Code で「Reopen in Container」を実行する。
 └── <各プロジェクト>/
 ```
 
-## コンテナを明示的に落とす
+`workspaceFolder` は `/root/work` 固定。変える場合は `mounts` と `HISTFILE` の絶対パスも
+合わせて変更する。
 
-`shutdownAction: "none"` は意図的な設定で、VS Code のウィンドウを閉じてもコンテナを
-落とさない（tmux セッションと実行中のジョブを残すため）。VS Code 側の操作では止まらないので、
-明示的に落とすには次のどちらかを使う。
+## ファイル
 
-- **VS Code**: Remote Explorer（リモートエクスプローラー）の Dev Containers 一覧で
-  対象コンテナを右クリック →「Stop Container」。
-- **ホストのシェル**: Dev Containers 拡張が付けるラベルで絞り込めるので、
-  ワークスペースのパスから一意に止められる。
+| ファイル | 役割 |
+|---------|------|
+| `devcontainer.json` | コンテナ定義 |
+| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
+| `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
+| `.bashrc` | tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
+| `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
+
+`.bashrc` と `.tmux.conf` は `~/` に symlink されるので、編集はこのリポジトリ側で行う。
+`claude` は `postCreateCommand` が `~/.local/bin` に入れる。
+
+## コンテナ内の状態
+
+ワークスペース配下の `.container-home/` に置き、別ホストで開いても引き継がれるようにしている。
+
+| コンテナ内 | 実体 |
+|---|---|
+| `/root/.claude` | `<ws>/.container-home/claude` |
+| `/root/.claude.json` | `<ws>/.container-home/claude.json` |
+| `/root/.ssh` | `<ws>/.container-home/ssh` |
+| `~/.gitconfig` | `<ws>/.container-home/gitconfig` |
+| `~/.config/gh` | `<ws>/.container-home/gh` |
+| `$HISTFILE` | `<ws>/.container-home/bash_history` |
+
+gh のトークンが平文で入るので `.container-home/` は `700` にする。秘密鍵はこのリポジトリでは
+なく `<ws>/.container-home/ssh` に置く。同一ワークスペースを複数ホストから同時に開かない。
+
+## 環境ごとに要設定
+
+- **GPU**: `runArgs` の `--device ${localEnv:DEVCONTAINER_GPU:/dev/null}` でホストの GPU を
+  CDI デバイスとして渡す。未設定なら GPU 無しで起動する。使う場合はホストに
+  nvidia-container-toolkit を入れ、`/etc/cdi/nvidia.yaml` を生成した上で、VS Code
+  （Remote-SSH ならリモート側）の環境に次を設定する。ホームを複数ノードで共有している
+  場合に GPU の無いノードで外れるよう、CDI spec の有無で分岐させる。
+
+  ```bash
+  if ls /etc/cdi/nvidia*.yaml /var/run/cdi/nvidia*.yaml >/dev/null 2>&1; then
+      export DEVCONTAINER_GPU=nvidia.com/gpu=all
+  fi
+  ```
+
+  設定後は VS Code Server を再起動する（Remote-SSH なら「Kill VS Code Server on Host」）。
+- **`/dev/fuse` が無いホスト**: `storage.conf` の driver を `vfs` に変更する。
+- **`TZ`**: `containerEnv` で `Asia/Tokyo` を指定している。
+
+## コンテナを落とす
+
+`shutdownAction: "none"` なので、VS Code を閉じてもコンテナは残る。
+
+- **VS Code**: Remote Explorer の Dev Containers 一覧で対象を右クリック →「Stop Container」
+- **ホストのシェル**:
 
   ```bash
   podman ps --filter label=devcontainer.local_folder=<workspace の絶対パス>
   podman stop <container id>
   ```
 
-イメージやビルドキャッシュまで捨てて作り直す場合は、VS Code の
-「Dev Containers: Rebuild Container」（キャッシュも捨てるなら
-「Rebuild Without Cache and Reopen in Container」）を使う。
-
-## 環境依存の設定（fork 時は要変更）
-
-- **DNS**: search domain はホストの `/etc/resolv.conf` から継承する。`--dns-search` は継承した
-  search を**置き換える**ので、環境をまたいで使うなら指定しない。
-- **`--privileged`**: podman-in-podman のためにホストの `/dev`（`/dev/fuse` を含む）を露出する。
-  ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
-  bind mount なので**再ビルドは不要**（コンテナを作り直すだけで反映される）。
-- **GPU**: `runArgs` の `--device ${localEnv:DEVCONTAINER_GPU:/dev/null}` でホストの GPU を
-  CDI デバイスとして渡す。GPU ホストでは VS Code（Remote-SSH ならリモート側）の環境に
-  `export DEVCONTAINER_GPU=nvidia.com/gpu=all` を設定する。要 nvidia-container-toolkit と
-  `/etc/cdi/nvidia.yaml`。未設定のホストでは無害な `/dev/null` にフォールバックする。
-  `nvidia.com/gpu=all` を直書きすると GPU の無いホストで `unresolvable CDI devices` となり
-  **コンテナが起動できない**ので、デフォルト値ごと消さないこと。ドライバのユーザ空間
-  ライブラリ（`libcuda.so` 等）はホストのカーネルモジュールとバージョン一致が必要で、
-  CDI がホストから注入する。**イメージ側に入れることはできない**（ベースイメージを
-  `nvidia/cuda` 系に変えても解決しない）。
-- **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
-  `workspaceFolder` を変える場合は両方を合わせて変更する。
-- **`TZ`**: `containerEnv` で `Asia/Tokyo` を指定している。`.bashrc` ではなく `containerEnv` に
-  置くのは、`.bashrc` の `export` が tmux サーバに届かずステータス行の時計が UTC になるため。
-- **認証情報**: Claude Code も gh も共有ストレージ上のファイルで認証する（上記「認証情報」参照）。
-  トークンを共有ストレージに置きたくない場合は、`containerEnv` に
-  `"GH_TOKEN": "${localEnv:GH_TOKEN}"` を置いてホストの環境変数から渡す方式に切り替える。
-
-## SSH 鍵と `~/.ssh`
-
-`/root/.ssh` は `<ws>/.container-home/ssh` を **bind mount** している。
-コンテナを作り直しても鍵と `known_hosts` が残る。
-
-```jsonc
-"source=${localWorkspaceFolder}/.container-home/ssh,target=/root/.ssh,type=bind"
-```
-
-- `initializeCommand` がホスト側で `700` で作る（bind の source が無いと podman が
-  ディレクトリとして作ってしまうため、先に作っておく必要がある）
-- `postCreateCommand` の `ssh-perms` が `~/.ssh` 700 / 秘密鍵 600 /
-  `.pub`・`known_hosts` 644 に直す。緩いと ssh が鍵を読まない
-- ⚠ **秘密鍵をこのリポジトリ（`.devcontainer/`）に置かないこと。** GitHub に push される。
-  置き場所は `<ws>/.container-home/ssh` で、ワークスペース側の `.gitignore` で
-  `.container-home/` ごと除外してある
-
-> 以前はワークスペース直下の `.secrets/ssh/` を正本にして起動のたび `~/.ssh` へ
-> コピーしていたが、bind mount にしたので **2026-09-14 に `.secrets/` は廃止した**。
+イメージごと作り直す場合は「Dev Containers: Rebuild Container」（キャッシュも捨てるなら
+「Rebuild Without Cache and Reopen in Container」）。
