@@ -112,6 +112,15 @@ VS Code で「Reopen in Container」を実行する。
 - **`--privileged`**: podman-in-podman のためにホストの `/dev`（`/dev/fuse` を含む）を露出する。
   ホストに `/dev/fuse` が無い場合は `storage.conf` の driver を `vfs` に変更する。
   bind mount なので**再ビルドは不要**（コンテナを作り直すだけで反映される）。
+- **GPU**: `runArgs` の `--device ${localEnv:DEVCONTAINER_GPU:/dev/null}` でホストの GPU を
+  CDI デバイスとして渡す。GPU ホストでは VS Code（Remote-SSH ならリモート側）の環境に
+  `export DEVCONTAINER_GPU=nvidia.com/gpu=all` を設定する。要 nvidia-container-toolkit と
+  `/etc/cdi/nvidia.yaml`。未設定のホストでは無害な `/dev/null` にフォールバックする。
+  `nvidia.com/gpu=all` を直書きすると GPU の無いホストで `unresolvable CDI devices` となり
+  **コンテナが起動できない**ので、デフォルト値ごと消さないこと。ドライバのユーザ空間
+  ライブラリ（`libcuda.so` 等）はホストのカーネルモジュールとバージョン一致が必要で、
+  CDI がホストから注入する。**イメージ側に入れることはできない**（ベースイメージを
+  `nvidia/cuda` 系に変えても解決しない）。
 - **`HISTFILE` / `mounts` のパス**: `/root/work` 固定を前提に絶対パスで書いている。
   `workspaceFolder` を変える場合は両方を合わせて変更する。
 - **`TZ`**: `containerEnv` で `Asia/Tokyo` を指定している。`.bashrc` ではなく `containerEnv` に
