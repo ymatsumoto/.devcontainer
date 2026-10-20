@@ -17,4 +17,7 @@ RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 epel-release \
     && microdnf clean all \
     && rm -rf /var/cache/dnf /var/cache/yum
 
+# 他ユーザ所有のワークスペースが nobody 所有に見えても git が拒否しないようにする
+RUN git config --system --add safe.directory '*'
+
 ENV PATH="/root/.local/bin:${PATH}"

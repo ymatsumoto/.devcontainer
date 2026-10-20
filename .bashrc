@@ -1,4 +1,6 @@
 # ~/.bashrc — devcontainer 用のそこそこ便利な設定
+# ~/.bashrc はこのファイルを source するだけのコンテナ内のファイル（postCreateCommand が作る）。
+# インストーラなどが ~/.bashrc に追記しても、このリポジトリは書き換わらない。
 
 # 対話シェルでなければ何もしない
 case $- in
@@ -12,8 +14,17 @@ if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
     exec tmux new-session -A -s main
 fi
 
+# --- コンテナ定義の更新チェック ---------------------------------------------------
+# postCreateCommand が作成時の定義のハッシュを /etc/devcontainer.stamp に残している。
+# git pull で定義が変わった（またはスタンプの無い旧版コンテナ）なら Rebuild を促す。
+__dc=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+if [ "$(cd "$__dc" && cat devcontainer.json Dockerfile init.sh 2>/dev/null | sha256sum)" != "$(cat /etc/devcontainer.stamp 2>/dev/null)" ]; then
+    printf '\e[1;33m[devcontainer] コンテナ定義が更新されています。Rebuild Container してください。\e[0m\n'
+fi
+unset __dc
+
 # --- 履歴 --------------------------------------------------------------------
-# HISTFILE は devcontainer.json の containerEnv で .container-home/ を指している
+# HISTFILE は devcontainer.json の containerEnv で /root/.state/ を指している
 HISTSIZE=10000
 HISTFILESIZE=20000
 HISTCONTROL=ignoreboth        # 重複と先頭スペース付きを記録しない
@@ -54,4 +65,3 @@ alias gl='git log --oneline --graph --decorate -20'
 # --- ページャ ----------------------------------------------------------------
 export PAGER=less
 export LESS='-R -F -X'        # 色を通す / 1画面なら自動終了 / 画面クリアしない
-
