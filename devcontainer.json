@@ -9,39 +9,38 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  "initializeCommand": {
-    "claude":       "mkdir -p ${localWorkspaceFolder}/.container-home/claude",
-    "claude-json":  "mkdir -p ${localWorkspaceFolder}/.container-home; [ -s ${localWorkspaceFolder}/.container-home/claude.json ] || echo '{}' > ${localWorkspaceFolder}/.container-home/claude.json",
-    "ssh":          "mkdir -p ${localWorkspaceFolder}/.container-home/ssh && chmod 700 ${localWorkspaceFolder}/.container-home/ssh",
-    "gh":           "mkdir -p ${localWorkspaceFolder}/.container-home/gh && chmod 700 ${localWorkspaceFolder}/.container-home/gh",
-    "gitconfig":    "mkdir -p ${localWorkspaceFolder}/.container-home && touch ${localWorkspaceFolder}/.container-home/gitconfig",
-    "bash-history": "mkdir -p ${localWorkspaceFolder}/.container-home && touch ${localWorkspaceFolder}/.container-home/bash_history"
-  },
+  // 状態はワークスペースではなくホーム側に、ユーザ・ワークスペースごとに置く（init.sh 参照）
+  "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/init.sh\" \"${localWorkspaceFolder}\" \"${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}\"",
 
   "mounts": [
-     "source=${localWorkspaceFolder}/.container-home/claude,target=/root/.claude,type=bind",
-     "source=${localWorkspaceFolder}/.container-home/claude.json,target=/root/.claude.json,type=bind",
-     "source=${localWorkspaceFolder}/.container-home/ssh,target=/root/.ssh,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename},target=/root/.state,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/claude,target=/root/.claude,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/claude.json,target=/root/.claude.json,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/ssh,target=/root/.ssh,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/gemini,target=/root/.gemini,type=bind",
      "source=${localWorkspaceFolder}/.devcontainer/storage.conf,target=/etc/containers/storage.conf,type=bind"
   ],
 
   "runArgs": [
     "--privileged",
+    "--umask", "0002",
     "--device", "${localEnv:DEVCONTAINER_GPU:/dev/null}"
   ],
 
   "containerEnv": {
-    "HISTFILE": "${containerWorkspaceFolder}/.container-home/bash_history",
+    "HISTFILE": "/root/.state/bash_history",
     "TZ": "Asia/Tokyo"
   },
 
   "postCreateCommand": {
     "claude":       "curl -fsSL https://claude.ai/install.sh | bash",
+    "agy":          "h=$(mktemp -d) && curl -fsSL https://antigravity.google/cli/install.sh | HOME=$h bash -s -- --dir /root/.local/bin; r=$?; rm -rf $h; exit $r",
     "ssh":          "chmod 700 ~/.ssh 2>/dev/null; chmod 600 ~/.ssh/* 2>/dev/null; chmod 644 ~/.ssh/*.pub ~/.ssh/known_hosts 2>/dev/null; true",
-    "gh":           "mkdir -p ~/.config && ln -sfn ${containerWorkspaceFolder}/.container-home/gh ~/.config/gh",
-    "gitconfig":    "ln -sf ${containerWorkspaceFolder}/.container-home/gitconfig ~/.gitconfig",
-    "bashrc":       "ln -sf ${containerWorkspaceFolder}/.devcontainer/.bashrc ~/.bashrc",
-    "tmux-conf":    "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf"
+    "gh":           "mkdir -p ~/.config && ln -sfn /root/.state/gh ~/.config/gh",
+    "gitconfig":    "ln -sf /root/.state/gitconfig ~/.gitconfig",
+    "bashrc":       "rm -f ~/.bashrc && echo '. ${containerWorkspaceFolder}/.devcontainer/.bashrc' > ~/.bashrc",
+    "tmux-conf":    "ln -sf ${containerWorkspaceFolder}/.devcontainer/.tmux.conf ~/.tmux.conf",
+    "stamp":        "cd ${containerWorkspaceFolder}/.devcontainer && cat devcontainer.json Dockerfile init.sh | sha256sum > /etc/devcontainer.stamp"
   },
 
   "customizations": {

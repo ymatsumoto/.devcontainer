@@ -9,9 +9,12 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 ```
 <workspace>/
 ├── .devcontainer/     ← このリポジトリ
-├── .container-home/   ← コンテナ内のホーム相当（git 管理外・700）
 └── <各プロジェクト>/
 ```
+
+コンテナ内のホーム相当の状態はワークスペースではなく、開いたユーザのホーム
+（`~/.devcontainer-state/<ワークスペース名>/`）に置く。同じワークスペースを
+複数ユーザがそれぞれのコンテナで開ける（後述）。
 
 `workspaceFolder` は `/root/work` 固定。変える場合は `mounts` と `HISTFILE` の絶対パスも
 合わせて変更する。
@@ -21,29 +24,71 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 | ファイル | 役割 |
 |---------|------|
 | `devcontainer.json` | コンテナ定義 |
+| `init.sh` | ホスト側の準備（状態ディレクトリの作成、旧レイアウトからの移行）。`initializeCommand` から毎回実行 |
 | `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
 | `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
 | `.bashrc` | tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
-`.bashrc` と `.tmux.conf` は `~/` に symlink されるので、編集はこのリポジトリ側で行う。
-`claude` は `postCreateCommand` が `~/.local/bin` に入れる。
+`~/.bashrc` はこのリポジトリの `.bashrc` を source するだけのファイル、`~/.tmux.conf` は
+symlink なので、編集はこのリポジトリ側で行う。インストーラなどが `~/.bashrc` に追記しても
+リポジトリは汚れない（コンテナを作り直すと消える）。
+
+`claude` と `agy`（Antigravity CLI）は `postCreateCommand` が `~/.local/bin` に入れる。
+`agy` のインストーラは rc ファイルに PATH を追記するので、一時的な HOME で実行している
+（PATH は Dockerfile の `ENV` で通してある）。
 
 ## コンテナ内の状態
 
-ワークスペース配下の `.container-home/` に置き、別ホストで開いても引き継がれるようにしている。
+ホストの `~/.devcontainer-state/<ワークスペース名>/`（以下 `<state>`、`700`）に置き、
+コンテナには `/root/.state` としてマウントする。ホームが NFS で共有されていれば、
+どのノードから開いても引き継がれる。
 
 | コンテナ内 | 実体 |
 |---|---|
-| `/root/.claude` | `<ws>/.container-home/claude` |
-| `/root/.claude.json` | `<ws>/.container-home/claude.json` |
-| `/root/.ssh` | `<ws>/.container-home/ssh` |
-| `~/.gitconfig` | `<ws>/.container-home/gitconfig` |
-| `~/.config/gh` | `<ws>/.container-home/gh` |
-| `$HISTFILE` | `<ws>/.container-home/bash_history` |
+| `/root/.claude` | `<state>/claude` |
+| `/root/.claude.json` | `<state>/claude.json` |
+| `/root/.ssh` | `<state>/ssh` |
+| `/root/.gemini` | `<state>/gemini`（agy の認証情報と会話） |
+| `~/.gitconfig` | `<state>/gitconfig` |
+| `~/.config/gh` | `<state>/gh` |
+| `$HISTFILE` | `<state>/bash_history` |
 
-gh のトークンが平文で入るので `.container-home/` は `700` にする。秘密鍵はこのリポジトリでは
-なく `<ws>/.container-home/ssh` に置く。同一ワークスペースを複数ホストから同時に開かない。
+秘密鍵はこのリポジトリではなく `<state>/ssh` に置く。同一ユーザが同一ワークスペースを
+複数ホストから同時に開かない（`claude.json` やトークン更新が競合する）。別ユーザは可。
+
+`<state>` はワークスペースのディレクトリ名で決まる。同名の別ワークスペースと取り違えないよう、
+`init.sh` が `.devcontainer/.workspace-id`（git 管理外）と `<state>/.workspace-id` を突き合わせ、
+食い違えばエラーで止まる。
+
+旧レイアウト（ワークスペース直下の `.container-home/`）があれば、自分が所有する分を
+`init.sh` が `<state>` にコピーする。旧版のコンテナを全部 Rebuild し終えたら
+`.container-home/` は手で消してよい。
+
+## 複数ユーザで共有する
+
+rootless podman はホストの UID / プライマリ GID をコンテナ内の 0/0 にマップするので、
+コンテナ内 root はホストからは「本人 / mlab」として読み書きする。ワークスペースは mlab の
+グループ権限で共有する。
+
+- rootless podman が前提。rootful の docker / podman ではユーザ間で同じコンテナに相乗りしてしまう。
+- コンテナは `--umask 0002` で動くので、新しく作るファイルはグループ書き込み可になる。
+- 既存ファイルは各自が自分の所有分に `chgrp mlab` / `chmod g+rwX` する。パスワードファイルなど
+  秘密のものは対象から外す（`chmod -R` をワークスペース全体にかけない）。
+- 共有する git リポジトリでは `git config core.sharedRepository group` を設定する。
+  これが無いと `.git/objects/` 配下が他のメンバーから書けなくなることがある。
+- 同じ作業ツリーを同時に触ると `index.lock` の取り合いやブランチ切り替えの事故が起きる。
+  共同編集が目的でなければ、各自 `git worktree` か別クローンを開く。
+- ワークスペースの NFSv4 では POSIX ACL（`setfacl`）は使えない。
+
+### テンプレート更新時
+
+- `.devcontainer/` は 1 人が pull するとそのワークスペースの全員に効く。
+- `devcontainer.json` / `Dockerfile` / `init.sh` の変更は各自が Rebuild するまで反映されない。
+  ずれている間はシェル起動時に警告が出る。
+- `.bashrc` / `.tmux.conf` / `storage.conf` は pull した時点で起動中の全コンテナに効くので、
+  旧版のコンテナでも動くように書く。
+- 状態のレイアウトを変えるときは、旧パスからの移行を `init.sh` に足す。
 
 ## 環境ごとに要設定
 

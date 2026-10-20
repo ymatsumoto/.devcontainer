@@ -2,3 +2,6 @@
 # リポジトリでは管理しない (バイナリを履歴に載せないため)。
 extensions/
 install-local-extensions.sh
+
+# ワークスペースごとの ID (init.sh が作る)。状態ディレクトリとの取り違え検出に使う。
+.workspace-id
