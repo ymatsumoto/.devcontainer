@@ -13,21 +13,22 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 ```
 
 コンテナ内のホーム相当の状態はワークスペースではなく、開いたユーザのホーム
-（`~/.devcontainer-state/<ワークスペース名>/`）に置く。同じワークスペースを
+（`~/.devcontainer-state/` の下）に置く。同じワークスペースを
 複数ユーザがそれぞれのコンテナで開ける（後述）。
 
-`workspaceFolder` は `/root/work` 固定。変える場合は `mounts` と `HISTFILE` の絶対パスも
-合わせて変更する。
+`workspaceFolder` は `/root/work` 固定。変える場合は `workspaceMount` の `target` も
+合わせて変更する。Claude Code のプロジェクト別データ（メモリなど）はこのパスで
+区別されるので、変えると引き継がれない。
 
 ## ファイル
 
 | ファイル | 役割 |
 |---------|------|
 | `devcontainer.json` | コンテナ定義 |
-| `init.sh` | ホスト側の準備（状態ディレクトリの作成、旧レイアウトからの移行）。`initializeCommand` から毎回実行 |
-| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入 |
+| `init.sh` | ホスト側の準備（ワークスペース ID と状態ディレクトリの用意、旧レイアウトからの移行）。`initializeCommand` から毎回実行 |
+| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入。他ユーザ所有のファイルでも git が止まらないよう `safe.directory '*'` を設定 |
 | `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
-| `.bashrc` | tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト |
+| `.bashrc` | tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト / 定義が更新されたら Rebuild を促す |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
 `~/.bashrc` はこのリポジトリの `.bashrc` を source するだけのファイル、`~/.tmux.conf` は
@@ -40,7 +41,7 @@ symlink なので、編集はこのリポジトリ側で行う。インストー
 
 ## コンテナ内の状態
 
-ホストの `~/.devcontainer-state/<ワークスペース名>/`（以下 `<state>`、`700`）に置き、
+ホストの `~/.devcontainer-state/<ワークスペース名>-<ID 先頭 8 桁>/`（以下 `<state>`、`700`）に置き、
 コンテナには `/root/.state` としてマウントする。ホームが NFS で共有されていれば、
 どのノードから開いても引き継がれる。
 
@@ -57,9 +58,19 @@ symlink なので、編集はこのリポジトリ側で行う。インストー
 秘密鍵はこのリポジトリではなく `<state>/ssh` に置く。同一ユーザが同一ワークスペースを
 複数ホストから同時に開かない（`claude.json` やトークン更新が競合する）。別ユーザは可。
 
-`<state>` はワークスペースのディレクトリ名で決まる。同名の別ワークスペースと取り違えないよう、
-`init.sh` が `.devcontainer/.workspace-id`（git 管理外）と `<state>/.workspace-id` を突き合わせ、
-食い違えばエラーで止まる。
+`<state>` はワークスペースの ID（`.devcontainer/.workspace-id`、git 管理外、`init.sh` が作る）で
+決まる。`devcontainer.json` からはファイルを読めないので、`init.sh` が
+`~/.devcontainer-state/.by-path<ワークスペースの絶対パス>` から `<state>` への symlink を張り、
+マウントはそれを経由する。
+
+- 同名の別ワークスペースは ID が違うので、別の `<state>` になる。
+- ワークスペースを移動しても、ノードごとにマウント先が違っても、ID がついてくるので同じ `<state>` を使う。
+- `.devcontainer/` ごと複製したワークスペースは、元のパスに同じ ID が残っていれば複製とみなして
+  ID を振り直す（元が見えないノードで開いた場合は判別できず、状態を共有する）。
+- 移動や削除で使われなくなった `.by-path` の symlink は残るが、害はない。
+- `.workspace-id` は最初に開いた人が作るので、その人は `.devcontainer/` に書き込める必要がある。
+- ディレクトリ名に ID を付ける前の版で作った `~/.devcontainer-state/<ワークスペース名>/` も、
+  中に ID が記録してあるのでそのまま使われる。
 
 旧レイアウト（ワークスペース直下の `.container-home/`）があれば、自分が所有する分を
 `init.sh` が `<state>` にコピーする。旧版のコンテナを全部 Rebuild し終えたら
@@ -79,7 +90,7 @@ rootless podman はホストの UID / プライマリ GID をコンテナ内の 
   これが無いと `.git/objects/` 配下が他のメンバーから書けなくなることがある。
 - 同じ作業ツリーを同時に触ると `index.lock` の取り合いやブランチ切り替えの事故が起きる。
   共同編集が目的でなければ、各自 `git worktree` か別クローンを開く。
-- ワークスペースの NFSv4 では POSIX ACL（`setfacl`）は使えない。
+- ワークスペースが NFSv4 の場合、POSIX ACL（`setfacl`）による default ACL は使えない。
 
 ### テンプレート更新時
 

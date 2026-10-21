@@ -9,15 +9,15 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/root/work,type=bind",
   "workspaceFolder": "/root/work",
 
-  // 状態はワークスペースではなくホーム側に、ユーザ・ワークスペースごとに置く（init.sh 参照）
-  "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/init.sh\" \"${localWorkspaceFolder}\" \"${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}\"",
+  // Per-user, per-workspace state lives in the host home, not the workspace (see init.sh)
+  "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/init.sh\" \"${localWorkspaceFolder}\" \"${localEnv:HOME}/.devcontainer-state\"",
 
   "mounts": [
-     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename},target=/root/.state,type=bind",
-     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/claude,target=/root/.claude,type=bind",
-     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/claude.json,target=/root/.claude.json,type=bind",
-     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/ssh,target=/root/.ssh,type=bind",
-     "source=${localEnv:HOME}/.devcontainer-state/${localWorkspaceFolderBasename}/gemini,target=/root/.gemini,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder},target=/root/.state,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/claude,target=/root/.claude,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/claude.json,target=/root/.claude.json,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/ssh,target=/root/.ssh,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/gemini,target=/root/.gemini,type=bind",
      "source=${localWorkspaceFolder}/.devcontainer/storage.conf,target=/etc/containers/storage.conf,type=bind"
   ],
 
