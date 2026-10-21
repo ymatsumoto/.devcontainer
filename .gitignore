@@ -1,7 +1,7 @@
-# ローカル専用: 未公開の .vsix とそのインストーラは各ホストの手元に置くだけで、
-# リポジトリでは管理しない (バイナリを履歴に載せないため)。
+# Local only: unpublished .vsix files and their installer stay on each host
+# so binaries never enter the history.
 extensions/
 install-local-extensions.sh
 
-# ワークスペースごとの ID (init.sh が作る)。状態ディレクトリとの取り違え検出に使う。
+# Per-workspace ID created by init.sh; selects the state directory in the home.
 .workspace-id
