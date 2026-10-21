@@ -45,6 +45,9 @@
 
   "customizations": {
     "vscode": {
+      "extensions": [
+        "ymatsumoto43.knowledgewalk"
+      ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
       }
