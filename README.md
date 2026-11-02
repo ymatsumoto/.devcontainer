@@ -55,6 +55,11 @@ symlink なので、編集はこのリポジトリ側で行う。インストー
 | `~/.config/gh` | `<state>/gh` |
 | `$HISTFILE` | `<state>/bash_history` |
 
+ワークスペースをまたいで共通にしたい Claude Code の設定は、`~/.devcontainer-state/.claude-managed/managed-settings.json`
+（コンテナ内では `/etc/claude-code/managed-settings.json`）に書く。管理設定なのでユーザ設定より優先され、
+Claude Code からは書き換えられない。中身が無ければ `init.sh` が `{}` で作る。
+例: コミットや PR に Claude の署名を付けない場合は `{"attribution": {"commit": "", "pr": ""}}`。
+
 秘密鍵はこのリポジトリではなく `<state>/ssh` に置く。同一ユーザが同一ワークスペースを
 複数ホストから同時に開かない（`claude.json` やトークン更新が競合する）。別ユーザは可。
 

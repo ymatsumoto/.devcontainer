@@ -97,3 +97,8 @@ touch "$S/gitconfig" "$S/bash_history"
 [ -s "$S/claude.json" ] || echo '{}' > "$S/claude.json"
 # The container runs with umask 002; strip group bits so ssh accepts ~/.ssh
 chmod -R go-rwx "$S/ssh"
+
+# --- Shared across workspaces --------------------------------------------------
+# Claude Code managed settings for every workspace of this user (/etc/claude-code)
+mkdir -p "$ROOT/.claude-managed"
+[ -s "$ROOT/.claude-managed/managed-settings.json" ] || echo '{}' > "$ROOT/.claude-managed/managed-settings.json"

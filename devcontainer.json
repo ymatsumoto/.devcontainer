@@ -18,6 +18,7 @@
      "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/claude.json,target=/root/.claude.json,type=bind",
      "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/ssh,target=/root/.ssh,type=bind",
      "source=${localEnv:HOME}/.devcontainer-state/.by-path${localWorkspaceFolder}/gemini,target=/root/.gemini,type=bind",
+     "source=${localEnv:HOME}/.devcontainer-state/.claude-managed,target=/etc/claude-code,type=bind",
      "source=${localWorkspaceFolder}/.devcontainer/storage.conf,target=/etc/containers/storage.conf,type=bind"
   ],
 
