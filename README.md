@@ -92,11 +92,11 @@ sshd は常駐させない。`sshd -i`（標準入出力で 1 接続だけ受け
 - 手元の `~/.ssh/config` の例（`HostKeyAlias` で known_hosts の登録名を固定する）:
 
   ```
-  # gie のジョブのコンテナ
-  Host gie
+  # gie のジョブのコンテナ（gie 1.2.21 以降は gie start が実際の値で表示する）
+  Host gie-<トンネル名>
     User root
-    HostKeyAlias gie-container
-    ProxyCommand ssh <投入側> gie shell -- /usr/sbin/sshd -i
+    HostKeyAlias gie-<トンネル名>
+    ProxyCommand gie shell -w <ワークスペース> -- /usr/sbin/sshd -i
 
   # ホストで VS Code から開いたコンテナ
   Host dc-hostA
