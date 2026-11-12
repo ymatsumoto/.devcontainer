@@ -9,8 +9,11 @@ case $- in
 esac
 
 # --- tmux ----------------------------------------------------------------------
-# Attach to (or create) the "main" session when outside tmux
-if [ -z "$TMUX" ] && command -v tmux >/dev/null 2>&1; then
+# Attach to (or create) the "main" session when outside tmux.
+# Skip it inside herdr panes (herdr sets HERDR_ENV=1 in every pane): tmux
+# would hide the agents from herdr. Also skip it without a terminal, e.g. the
+# env probe that devcontainer exec runs.
+if [ -z "$TMUX" ] && [ -z "$HERDR_ENV" ] && [ -t 0 ] && command -v tmux >/dev/null 2>&1; then
     exec tmux new-session -A -s main
 fi
 

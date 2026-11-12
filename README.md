@@ -28,7 +28,7 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 | `init.sh` | ホスト側の準備（ワークスペース ID と状態ディレクトリの用意、旧レイアウトからの移行）。`initializeCommand` から毎回実行 |
 | `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入。他ユーザ所有のファイルでも git が止まらないよう `safe.directory '*'` を設定 |
 | `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
-| `.bashrc` | tmux 自動起動 / 履歴共有 / git ブランチ付きプロンプト / 定義が更新されたら Rebuild を促す |
+| `.bashrc` | tmux 自動起動（herdr のペインでは起動しない）/ 履歴共有 / git ブランチ付きプロンプト / 定義が更新されたら Rebuild を促す |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
 
 `~/.bashrc` はこのリポジトリの `.bashrc` を source するだけのファイル、`~/.tmux.conf` は
