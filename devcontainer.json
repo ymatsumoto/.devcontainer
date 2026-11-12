@@ -37,6 +37,7 @@
     "claude":       "curl -fsSL https://claude.ai/install.sh | bash",
     "agy":          "h=$(mktemp -d) && curl -fsSL https://antigravity.google/cli/install.sh | HOME=$h bash -s -- --dir /root/.local/bin; r=$?; rm -rf $h; exit $r",
     "ssh":          "chmod 700 ~/.ssh 2>/dev/null; chmod 600 ~/.ssh/* 2>/dev/null; chmod 644 ~/.ssh/*.pub ~/.ssh/known_hosts 2>/dev/null; true",
+    "sshd-key":     "d=/root/.state/sshd; mkdir -p $d && chmod 700 $d && { [ -s $d/ssh_host_ed25519_key ] || ssh-keygen -q -t ed25519 -N '' -C devcontainer -f $d/ssh_host_ed25519_key; }",
     "gh":           "mkdir -p ~/.config && ln -sfn /root/.state/gh ~/.config/gh",
     "gitconfig":    "ln -sf /root/.state/gitconfig ~/.gitconfig",
     "bashrc":       "rm -f ~/.bashrc && echo '. ${containerWorkspaceFolder}/.devcontainer/.bashrc' > ~/.bashrc",

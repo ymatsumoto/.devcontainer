@@ -26,7 +26,7 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 |---------|------|
 | `devcontainer.json` | コンテナ定義 |
 | `init.sh` | ホスト側の準備（ワークスペース ID と状態ディレクトリの用意、旧レイアウトからの移行）。`initializeCommand` から毎回実行 |
-| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq を導入。他ユーザ所有のファイルでも git が止まらないよう `safe.directory '*'` を設定 |
+| `Dockerfile` | AlmaLinux 9-minimal に tmux, git, gh, podman, python3, poppler-utils, jq, openssh-server を導入。他ユーザ所有のファイルでも git が止まらないよう `safe.directory '*'` を設定 |
 | `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
 | `.bashrc` | tmux 自動起動（herdr のペインでは起動しない）/ 履歴共有 / git ブランチ付きプロンプト / 定義が更新されたら Rebuild を促す |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
@@ -80,6 +80,30 @@ Claude Code からは書き換えられない。中身が無ければ `init.sh` 
 旧レイアウト（ワークスペース直下の `.container-home/`）があれば、自分が所有する分を
 `init.sh` が `<state>` にコピーする。旧版のコンテナを全部 Rebuild し終えたら
 `.container-home/` は手で消してよい。
+
+## SSH でコンテナに入る（herdr --remote 用）
+
+sshd は常駐させない。`sshd -i`（標準入出力で 1 接続だけ受ける）を `ProxyCommand` から起動して入る。
+ポートは開かない。
+
+- ログインは root の公開鍵認証のみ。自分の公開鍵を `<state>/ssh/authorized_keys` に置く。
+- ホスト鍵は `<state>/sshd/ssh_host_ed25519_key`。無ければ `postCreateCommand` が作るので、
+  Rebuild しても変わらない。設定は `/etc/ssh/sshd_config.d/10-devcontainer.conf`（PAM は無効）。
+- 手元の `~/.ssh/config` の例（`HostKeyAlias` で known_hosts の登録名を固定する）:
+
+  ```
+  # gie のジョブのコンテナ
+  Host gie
+    User root
+    HostKeyAlias gie-container
+    ProxyCommand ssh <投入側> gie shell -- /usr/sbin/sshd -i
+
+  # ホストで VS Code から開いたコンテナ
+  Host dc-hostA
+    User root
+    HostKeyAlias dc-hostA
+    ProxyCommand ssh hostA podman exec -i <コンテナ名> /usr/sbin/sshd -i
+  ```
 
 ## 複数ユーザで共有する
 
