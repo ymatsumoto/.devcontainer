@@ -37,9 +37,13 @@ find_state() {
 #   C:\Users\me\ws                                        -> /mnt/c/Users/me/ws
 # The drive mount point is /mnt by default; set WSL_MOUNT_ROOT if /etc/wsl.conf
 # moves it.
+#
+# Prints "<id> <name>" for every running container of this workspace. More than
+# one means VS Code and the devcontainer CLI each made their own (they label the
+# same folder differently), which is worth saying rather than picking one.
 container() {
-    local id lf p distro drive
-    while IFS=$'\t' read -r id lf; do
+    local id name lf p distro drive
+    while IFS=$'\t' read -r id name lf; do
         p=$lf
         case $p in
             '\\wsl.localhost\'* | '\\wsl$\'*)
@@ -53,8 +57,8 @@ container() {
                 p=${p#*:\\}
                 p=${WSL_MOUNT_ROOT:-/mnt}/$(echo "$drive" | tr 'A-Z' 'a-z')/${p//\\//} ;;
         esac
-        [ "$p" = "$WS" ] && { echo "$id"; return; }
-    done < <("$ENGINE" ps --format '{{.ID}}'$'\t''{{index .Labels "devcontainer.local_folder"}}')
+        [ "$p" = "$WS" ] && echo "$id $name"
+    done < <("$ENGINE" ps --format '{{.ID}}'$'\t''{{.Names}}'$'\t''{{index .Labels "devcontainer.local_folder"}}')
 }
 
 engine() { command -v podman || command -v docker || die "neither podman nor docker is on PATH"; }
@@ -66,9 +70,12 @@ if [ "${1:-}" = --proxy ]; then
     STATE=$(find_state "$DC") || die "no state for $DC; open the workspace in its container first"
     WS=$(cat "$STATE/.workspace-path")
     ENGINE=$(engine)
-    c=$(container)
-    [ -n "$c" ] || die "no running container for $WS on $(hostname) (start it, or check: $ENGINE ps)"
-    exec "$ENGINE" exec -i "$c" /usr/sbin/sshd -i
+    mapfile -t found < <(container)
+    case ${#found[@]} in
+        0) die "no running container for $WS (start it, or check: $ENGINE ps)" ;;
+        1) exec "$ENGINE" exec -i "${found[0]%% *}" /usr/sbin/sshd -i ;;
+        *) die "$WS has ${#found[@]} running containers ($(printf '%s ' "${found[@]#* }")); VS Code and the devcontainer CLI label the same folder differently, so stop the stale one: $ENGINE stop <name>" ;;
+    esac
 fi
 
 # --- Gather what the three steps below need --------------------------------------
