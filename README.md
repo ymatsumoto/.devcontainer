@@ -103,14 +103,19 @@ sshd は常駐させない。`sshd -i`（標準入出力で 1 接続だけ受け
   Host dc-<ワークスペース名>
     User root
     HostKeyAlias dc-<ワークスペース名>
-    ProxyCommand sh -c 'exec podman exec -i "$(podman ps -q --filter label=devcontainer.local_folder=<ワークスペース> | head -n1)" /usr/sbin/sshd -i'
+    ProxyCommand bash "<ワークスペース>/.devcontainer/ssh-setup.sh" --proxy
   ```
 
 - ホスト（WSL や研究室ノード）で VS Code から開いたコンテナは、そのホストで
   `.devcontainer/ssh-setup.sh` を一度実行すれば `ssh dc-<ワークスペース名>` で入れる。
   公開鍵の `authorized_keys` への追加、ホスト鍵の `known_hosts` への登録、上の `Host` ブロックの追記を
   足りない分だけ行い、最後に接続を試す。コンテナは毎回ラベルで探すので、Rebuild しても書き直しは要らない。
-  別のマシンから入るときは、`ProxyCommand` の先頭を `ssh <ホスト>` で包む。
+  別のマシンから入るときは、同じスクリプトを `--via <ホスト> <ワークスペース>` で実行する。
+- **1 つのワークスペースのコンテナは、VS Code か `devcontainer` CLI のどちらか一方で作る。**
+  両者は同じフォルダに違うラベルを付けるので（VS Code: `c:\Users\me\ws` や
+  `\\wsl.localhost\<distro>\home\me\ws`、CLI: そのホストから見たパス）、両方で作ると
+  同じワークスペースにコンテナが 2 つ並ぶ。`ssh-setup.sh` はどちらのラベルも照合するが、
+  2 つ見つかったときは名前を挙げて止まる。片方を `podman stop` する。
 
 ## 複数ユーザで共有する
 
