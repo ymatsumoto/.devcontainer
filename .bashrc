@@ -2,6 +2,25 @@
 # ~/.bashrc is a container-local file that only sources this one (created by
 # postCreateCommand), so installers appending to ~/.bashrc never touch the repo.
 
+# --- Container environment -----------------------------------------------------
+# A shell that sshd started (ssh into the container, herdr --remote and its panes)
+# gets sshd's environment, not the container's: /root/.local/bin (claude, herdr,
+# agy) is missing from PATH and HISTFILE is unset. Take what the container
+# defines from PID 1. Variables already set win, except a PATH without
+# /root/.local/bin, which is replaced. Before the interactive check, so that
+# `ssh <container> claude ...` finds it too.
+if [ -r /proc/1/environ ]; then
+    while IFS= read -r -d '' __kv; do
+        __k=${__kv%%=*}
+        case $__k in
+            HOSTNAME|HOME|TERM|SHLVL|PWD|_|*[!A-Za-z0-9_]*|[0-9]*|'') continue ;;
+            PATH) case ":$PATH:" in *:/root/.local/bin:*) ;; *) export PATH="${__kv#*=}" ;; esac ;;
+            *) [ -n "${!__k+x}" ] || export "$__kv" ;;
+        esac
+    done < /proc/1/environ
+    unset __kv __k
+fi
+
 # Do nothing for non-interactive shells
 case $- in
     *i*) ;;
