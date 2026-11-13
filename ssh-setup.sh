@@ -105,7 +105,14 @@ EOS
     add_key() {
         ssh -o BatchMode=yes "$HOST" bash -s -- "$STATE/ssh/authorized_keys" <<EOS
 ak=\$1 key='$(cat "$1")'
-if grep -qxF "\$key" "\$ak" 2>/dev/null; then echo there; else echo "\$key" >> "\$ak"; echo added; fi
+if grep -qxF "\$key" "\$ak" 2>/dev/null; then
+    echo there
+else
+    # End an unterminated last line first, or the key would join it
+    [ ! -s "\$ak" ] || [ -z "\$(tail -c1 "\$ak")" ] || echo >> "\$ak"
+    echo "\$key" >> "\$ak"
+    echo added
+fi
 chmod 600 "\$ak"
 EOS
     }
@@ -122,7 +129,14 @@ else
     WHERE="$STATE/ssh/authorized_keys"
     add_key() {
         local ak=$STATE/ssh/authorized_keys
-        if grep -qxF "$(cat "$1")" "$ak" 2>/dev/null; then echo there; else cat "$1" >> "$ak"; echo added; fi
+        if grep -qxF "$(cat "$1")" "$ak" 2>/dev/null; then
+            echo there
+        else
+            # End an unterminated last line first, or the key would join it
+            [ ! -s "$ak" ] || [ -z "$(tail -c1 "$ak")" ] || echo >> "$ak"
+            cat "$1" >> "$ak"
+            echo added
+        fi
         chmod 600 "$ak"
     }
     ENGINE=$(engine)
