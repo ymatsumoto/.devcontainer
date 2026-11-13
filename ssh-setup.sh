@@ -32,10 +32,13 @@ find_state() {
 
 # The workspace's container, by its devcontainer.local_folder label: looked up at
 # every connection, because a rebuild changes its name and id. VS Code on Windows
-# records a WSL folder as \\wsl.localhost\<distro>\home\... (or \\wsl$\...), not
-# as the Linux path init.sh saw, so that form is turned back into a path.
+# writes the label the Windows way, not as the path init.sh saw, in two forms:
+#   \\wsl.localhost\<distro>\home\me\ws  (or \\wsl$\...)  -> /home/me/ws
+#   C:\Users\me\ws                                        -> /mnt/c/Users/me/ws
+# The drive mount point is /mnt by default; set WSL_MOUNT_ROOT if /etc/wsl.conf
+# moves it.
 container() {
-    local id lf p distro
+    local id lf p distro drive
     while IFS=$'\t' read -r id lf; do
         p=$lf
         case $p in
@@ -45,6 +48,10 @@ container() {
                 [ -z "${WSL_DISTRO_NAME:-}" ] || [ "$distro" = "$WSL_DISTRO_NAME" ] || continue
                 p=${p#*\\}
                 p=/${p//\\//} ;;
+            [A-Za-z]:\\*)
+                drive=${p%%:*}
+                p=${p#*:\\}
+                p=${WSL_MOUNT_ROOT:-/mnt}/$(echo "$drive" | tr 'A-Z' 'a-z')/${p//\\//} ;;
         esac
         [ "$p" = "$WS" ] && { echo "$id"; return; }
     done < <("$ENGINE" ps --format '{{.ID}}'$'\t''{{index .Labels "devcontainer.local_folder"}}')
