@@ -24,8 +24,12 @@ RUN git config --system --add safe.directory '*'
 # sshd never runs as a service. `sshd -i` serves a single connection over
 # stdin/stdout, as the ProxyCommand that herdr --remote goes through. The host
 # key lives in the per-workspace state (postCreateCommand makes it), so a
-# rebuilt container keeps it. PAM is off: there is no login session to set up.
-RUN printf '%s\n' 'HostKey /root/.state/sshd/ssh_host_ed25519_key' 'UsePAM no' \
+# rebuilt container keeps it.
+#
+# No UsePAM here: this sshd is built with PAM compiled in, so turning it off
+# earned a warning on every connection ("'UsePAM no' is not supported in this
+# build and may cause several problems") and changed nothing.
+RUN printf '%s\n' 'HostKey /root/.state/sshd/ssh_host_ed25519_key' \
         > /etc/ssh/sshd_config.d/10-devcontainer.conf
 
 ENV PATH="/root/.local/bin:${PATH}"
