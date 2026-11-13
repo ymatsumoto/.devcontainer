@@ -30,6 +30,7 @@ Claude Code を動かすための Dev Container 定義（AlmaLinux 9 / podman）
 | `storage.conf` | podman-in-podman 用のストレージ設定。bind mount なので変更に再ビルドは不要 |
 | `.bashrc` | tmux 自動起動（herdr のペインでは起動しない）/ 履歴共有 / git ブランチ付きプロンプト / 定義が更新されたら Rebuild を促す |
 | `.tmux.conf` | prefix を `C-t` に変更、マウス操作を有効化 |
+| `ssh-setup.sh` | ホストで実行し、`ssh dc-<ワークスペース名>` でコンテナに入れるようにする（herdr --remote 用、後述） |
 
 `~/.bashrc` はこのリポジトリの `.bashrc` を source するだけのファイル、`~/.tmux.conf` は
 symlink なので、編集はこのリポジトリ側で行う。インストーラなどが `~/.bashrc` に追記しても
@@ -98,12 +99,18 @@ sshd は常駐させない。`sshd -i`（標準入出力で 1 接続だけ受け
     HostKeyAlias gie-<トンネル名>
     ProxyCommand gie shell -w <ワークスペース> -- /usr/sbin/sshd -i
 
-  # ホストで VS Code から開いたコンテナ
-  Host dc-hostA
+  # ホストで VS Code から開いたコンテナ（ssh-setup.sh が作る）
+  Host dc-<ワークスペース名>
     User root
-    HostKeyAlias dc-hostA
-    ProxyCommand ssh hostA podman exec -i <コンテナ名> /usr/sbin/sshd -i
+    HostKeyAlias dc-<ワークスペース名>
+    ProxyCommand sh -c 'exec podman exec -i "$(podman ps -q --filter label=devcontainer.local_folder=<ワークスペース> | head -n1)" /usr/sbin/sshd -i'
   ```
+
+- ホスト（WSL や研究室ノード）で VS Code から開いたコンテナは、そのホストで
+  `.devcontainer/ssh-setup.sh` を一度実行すれば `ssh dc-<ワークスペース名>` で入れる。
+  公開鍵の `authorized_keys` への追加、ホスト鍵の `known_hosts` への登録、上の `Host` ブロックの追記を
+  足りない分だけ行い、最後に接続を試す。コンテナは毎回ラベルで探すので、Rebuild しても書き直しは要らない。
+  別のマシンから入るときは、`ProxyCommand` の先頭を `ssh <ホスト>` で包む。
 
 ## 複数ユーザで共有する
 
