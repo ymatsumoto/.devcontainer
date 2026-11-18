@@ -30,7 +30,12 @@
 
   "containerEnv": {
     "HISTFILE": "/root/.state/bash_history",
-    "TZ": "Asia/Tokyo"
+    "TZ": "Asia/Tokyo",
+    // Nothing in a container sets SHELL the way a login does, and a program that
+    // opens a shell for you falls back to /bin/sh when it is missing. That is a
+    // symlink to bash, which then runs in POSIX mode and never reads ~/.bashrc:
+    // herdr panes came up as plain "sh-5.1#". Name the shell root actually has.
+    "SHELL": "/bin/bash"
   },
 
   "postCreateCommand": {
